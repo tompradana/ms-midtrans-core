@@ -1,0 +1,22 @@
+#ms-payment-expiry-countdown {
+	display: inline-block;
+	align-items: center;
+	padding: 10px;
+	border-radius: 4px;
+	border:  1px solid #ddd;
+	margin-bottom: 1.5rem;
+}
+
+#ms-payment-expiry-countdown >div {
+	display: inline-block;
+	margin: 0 1.5rem;
+	text-align: center;
+}
+
+#ms-payment-expiry-countdown >div span {
+	display: block;
+}
+
+#ms-payment-expiry-countdown >div span.label {
+	font-size: 12px;
+}

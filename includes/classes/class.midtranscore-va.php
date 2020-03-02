@@ -35,6 +35,8 @@ function ms_midtrans_core_va_init() {
 			$this->expiry_time 		= $this->get_option( 'expiry_time' );
 			$this->expiry_unit 		= $this->get_option( 'expiry_unit' );
 			$this->callback_url 	= $this->get_option( 'callback_url' );
+			$this->date_format 		= $this->get_option( 'date_format' );
+			$this->time_format 		= $this->get_option( 'time_format' );
 			$this->notification_url = '';
 			$this->api_url 			= $this->sandbox_mode ? 'https://api.sandbox.midtrans.com' : 'https://api.midtrans.com';
 
@@ -69,6 +71,14 @@ function ms_midtrans_core_va_init() {
 					'description' 	=> '',
 					'default'     	=> 'no'
 				),
+				'sandbox_mode' => array(
+					'title'       	=> __( 'Sandbox mode', 'ms-midtrans-core' ),
+					'label'       	=> __( 'Enable Sandbox Mode', 'ms-midtrans-core' ),
+					'type'        	=> 'checkbox',
+					'description' 	=> __( 'Place the payment gateway in sandbox mode.', 'ms-midtrans-core' ),
+					'default'     	=> 'yes',
+					'desc_tip'    	=> true,
+				),
 				'title' => array(
 					'title'       	=> __( 'Title', 'ms-midtrans-core' ),
 					'type'        	=> 'text',
@@ -85,17 +95,9 @@ function ms_midtrans_core_va_init() {
 				'instructions' => array(
 					'title'       	=> __( 'Instructions', 'ms-midtrans-core' ),
 					'type'        	=> 'textarea_html',
-					'description' 	=> __( 'Available tag {{expiry_date}}, {{expiry_time}}, {{expiry_datetime}}, {{vanumber}}, {{amount}}', 'ms-midtrans-core' ),
+					'description' 	=> __( 'Available tag {{countdown}}, {{expiry_date}}, {{expiry_time}}, {{expiry_datetime}}, {{vanumber}}, {{amount}}', 'ms-midtrans-core' ),
 					'default'     	=> __( 'Pay with Virtual Account via our super-cool payment gateway.', 'ms-midtrans-core' ),
 					'desc_tip'    	=> false
-				),
-				'sandbox_mode' => array(
-					'title'       	=> __( 'Sandbox mode', 'ms-midtrans-core' ),
-					'label'       	=> __( 'Enable Sandbox Mode', 'ms-midtrans-core' ),
-					'type'        	=> 'checkbox',
-					'description' 	=> __( 'Place the payment gateway in sandbox mode.', 'ms-midtrans-core' ),
-					'default'     	=> 'yes',
-					'desc_tip'    	=> true,
 				),
 				'merchant_id'	 	=> array(
 					'title'		  	=> __( 'Merchant ID', 'ms-midtrans-core' ),
@@ -126,6 +128,16 @@ function ms_midtrans_core_va_init() {
 						'day'	  	=> __( 'Day', 'ms-midtrans-core' )
 					),
 					'default'	  	=> 'hour'		
+				),
+				'date_format' => array(
+					'title'       	=> __( 'Date Format', 'ms-midtrans-core' ),
+					'type'        	=> 'text',
+					'default'		=> get_option( 'date_format' )
+				),
+				'time_format' => array(
+					'title'       	=> __( 'Date Format', 'ms-midtrans-core' ),
+					'type'        	=> 'text',
+					'default'		=> get_option( 'time_format' )
 				),
 				'callback_url' => array(
 					'title'       	=> __( 'Callback URL', 'ms-midtrans-core' ),
@@ -223,6 +235,11 @@ function ms_midtrans_core_va_init() {
 				);
 			} else if ( $bank == 'mandiri' ) {
 				$payment_type = 'echannel';
+				$body['echannel'] = array(
+					'bill_info1' => __( 'Payment For:', 'ms-midtrans-core' ),
+					'bill_info2' => sprintf( __( 'Order #%s', 'ms-midtrans-core' ), $order_id ),
+					'bill_info3' => $order->get_formatted_billing_full_name()
+				);
 			} else {
 				$payment_type = 'permata';
 			}
