@@ -5,4 +5,4 @@ Disclaimer: Plugin ini masih dalam pengembangan, kami tidak bertanggung jawab at
 ## Plugin WooCommerce Payment Gateway menggunakan Midtrans Core API
 
 #### versi 1.0.0
-- Saat ini hanya mendukun Bank Transfer / Virtual Account.
+- Saat ini hanya mendukung Bank Transfer / Virtual Account.
