@@ -1,5 +1,4 @@
 (function($) {
-    console.log('init');
     if ($('#ms-payment-expiry-countdown').length > 0 && $().countdown) {
         var finalDate = $('#ms-payment-expiry-countdown').data('date');
         $('#ms-payment-expiry-countdown').countdown(finalDate).on("update.countdown", function(event) {
@@ -33,4 +32,8 @@
   			}
         });;
     }
+
+    $('.ms-midtrans-core-payment-details ul.accordion > li').on('click',function(){
+    	$(this).find('>ul,>ol').slideToggle('fast');
+    })
 })(jQuery);

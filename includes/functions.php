@@ -8,7 +8,8 @@ add_filter( 'woocommerce_payment_gateways', 'ms_midtrans_core_payment_gateways' 
 
 // print out instruction
 function ms_midtrans_core_payment_instruction( $order_id, $payment ) {
-	$instruction 		= str_replace('ms_midtrans_core_', '', $payment->id );
+	$order 				= wc_get_order( $order_id );
+	$instruction 		= str_replace('ms_midtrans_core_', '', $order->get_payment_method() );
 	$payment_details 	= maybe_unserialize( get_post_meta( $order_id, '_ms_midtrans_payment_response', true ) );
 	$payment_status 	= maybe_unserialize( get_post_meta( $order_id, '_ms_midtrans_payment_status', true ) );
 	$payment_expiry 	= get_post_meta( $order_id, '_ms_midtrans_payment_expiry', true );
@@ -36,6 +37,7 @@ function ms_midtrans_core_payment_instruction( $order_id, $payment ) {
 	$html = str_replace('{{expiry_date}}', $expiry_date, $html );
 	$html = str_replace('{{expiry_time}}', $expiry_time, $html );
 	$html = str_replace('{{expiry_datetime}}', $expiry_datetime, $html );
+	$html = str_replace('{{order_url}}', sprintf('<a class="order-url" href="%s">%s</a>', $order->get_view_order_url(), __( 'View Order', 'ms-midtrans-core' ) ), $html );
 
 	if ( strpos( $html, '{{countdown}}' ) !== false ) {
 		$countdown = '<div id="ms-payment-expiry-countdown" data-date="' . date_i18n( 'Y/m/d H:i:s', $payment_expiry ) . '"></div>';
@@ -50,6 +52,7 @@ function ms_midtrans_core_payment_instruction( $order_id, $payment ) {
 	include( MS_MIDTRANS_CORE_DIR . '/views/instructions/'.$instruction.'.php' );
 }
 
+// get va number
 function ms_midtrans_core_vanumber( $payment_details ) {
 	if ( isset( $payment_details['va_numbers'] ) ) {
 		$number = sprintf( '%s %s', strtoupper( $payment_details['va_numbers'][0]['bank'] ), $payment_details['va_numbers'][0]['va_number'] );
@@ -64,6 +67,43 @@ function ms_midtrans_core_vanumber( $payment_details ) {
 	}
 	return $number;
 }
+
+// redirect custom page
+function redirect_payment_page() {
+	/* do nothing if we are not on the appropriate page */
+	if( !is_wc_endpoint_url( 'order-received' ) || empty( $_GET['key'] ) ) {
+		return;
+	}
+
+	$order_id 	= wc_get_order_id_by_order_key( $_GET['key'] );
+	$order 		= wc_get_order( $order_id );
+	$payment 	= wc_get_payment_gateway_by_order( $order );
+
+	if ( '' != $payment->get_option('redirect') ) {
+		if( 'ms_midtrans_core_va' == $order->get_payment_method() ) { /* WC 3.0+ */
+			$url = add_query_arg( 'order', $_GET['key'], get_permalink( $payment->get_option('redirect') ) );
+			wp_redirect( $url );
+			exit;
+		}
+	}
+}
+add_action( 'template_redirect', 'redirect_payment_page' );
+
+// custom payment page
+function payment_page_shortcode( $atts ) {
+	ob_start();
+	$order_id 			= wc_get_order_id_by_order_key( $_GET['order'] );
+	$resposne 			= get_post_meta( $order_id, '_ms_midtrans_payment_response', true );
+	$order 				= wc_get_order( $order_id );
+	$payment_gateway 	= wc_get_payment_gateway_by_order( $order );
+	if ( $order ):
+		include( MS_MIDTRANS_CORE_DIR . '/views/thankyou-shortcode.php' );
+	else : ?>
+		<p class="woocommerce-notice woocommerce-notice--success woocommerce-thankyou-order-received"><?php echo apply_filters( 'woocommerce_thankyou_order_received_text', esc_html__( 'Thank you. Your order has been received.', 'woocommerce' ), null ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></p>
+	<?php endif;
+	return ob_get_clean();
+}
+add_shortcode( 'ms-midtrans-core-payment', 'payment_page_shortcode' );
 
 // helper
 if ( !function_exists( 'wp_is_mobile' ) ) {

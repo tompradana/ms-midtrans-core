@@ -25,10 +25,10 @@ function ms_midtrans_core_va_init() {
 		 
 			// Load the settings.
 			$this->init_settings();
+			$this->enabled 			= $this->get_option( 'enabled' );
 			$this->title 			= $this->get_option( 'title' );
 			$this->description 		= $this->get_option( 'description' );
 			$this->instructions 	= $this->get_option( 'instructions' );
-			$this->enabled 			= $this->get_option( 'enabled' );
 			$this->sandbox_mode 	= 'yes' === $this->get_option( 'sandbox_mode' );
 			$this->client_key 		= $this->get_option( 'client_key' );
 			$this->server_key 		= $this->get_option( 'server_key' );
@@ -38,6 +38,9 @@ function ms_midtrans_core_va_init() {
 			$this->date_format 		= $this->get_option( 'date_format' );
 			$this->time_format 		= $this->get_option( 'time_format' );
 			$this->notification_url = '';
+			$this->redirect 		= $this->get_option( 'redirect' );
+
+			// api url
 			$this->api_url 			= $this->sandbox_mode ? 'https://api.sandbox.midtrans.com' : 'https://api.midtrans.com';
 
 			// This action hook saves the settings
@@ -71,14 +74,6 @@ function ms_midtrans_core_va_init() {
 					'description' 	=> '',
 					'default'     	=> 'no'
 				),
-				'sandbox_mode' => array(
-					'title'       	=> __( 'Sandbox mode', 'ms-midtrans-core' ),
-					'label'       	=> __( 'Enable Sandbox Mode', 'ms-midtrans-core' ),
-					'type'        	=> 'checkbox',
-					'description' 	=> __( 'Place the payment gateway in sandbox mode.', 'ms-midtrans-core' ),
-					'default'     	=> 'yes',
-					'desc_tip'    	=> true,
-				),
 				'title' => array(
 					'title'       	=> __( 'Title', 'ms-midtrans-core' ),
 					'type'        	=> 'text',
@@ -95,9 +90,17 @@ function ms_midtrans_core_va_init() {
 				'instructions' => array(
 					'title'       	=> __( 'Instructions', 'ms-midtrans-core' ),
 					'type'        	=> 'textarea_html',
-					'description' 	=> __( 'Available tag {{countdown}}, {{expiry_date}}, {{expiry_time}}, {{expiry_datetime}}, {{vanumber}}, {{amount}}', 'ms-midtrans-core' ),
+					'description' 	=> __( 'Available tag {{countdown}}, {{expiry_date}}, {{expiry_time}}, {{expiry_datetime}}, {{vanumber}}, {{amount}}, {{order_url}}', 'ms-midtrans-core' ),
 					'default'     	=> __( 'Pay with Virtual Account via our super-cool payment gateway.', 'ms-midtrans-core' ),
 					'desc_tip'    	=> false
+				),
+				'sandbox_mode' => array(
+					'title'       	=> __( 'Sandbox mode', 'ms-midtrans-core' ),
+					'label'       	=> __( 'Enable Sandbox Mode', 'ms-midtrans-core' ),
+					'type'        	=> 'checkbox',
+					'description' 	=> __( 'Place the payment gateway in sandbox mode.', 'ms-midtrans-core' ),
+					'default'     	=> 'yes',
+					'desc_tip'    	=> true,
 				),
 				'merchant_id'	 	=> array(
 					'title'		  	=> __( 'Merchant ID', 'ms-midtrans-core' ),
@@ -130,12 +133,12 @@ function ms_midtrans_core_va_init() {
 					'default'	  	=> 'hour'		
 				),
 				'date_format' => array(
-					'title'       	=> __( 'Date Format', 'ms-midtrans-core' ),
+					'title'       	=> __( 'Expiry Date Format', 'ms-midtrans-core' ),
 					'type'        	=> 'text',
 					'default'		=> get_option( 'date_format' )
 				),
 				'time_format' => array(
-					'title'       	=> __( 'Date Format', 'ms-midtrans-core' ),
+					'title'       	=> __( 'Expiry Time Format', 'ms-midtrans-core' ),
 					'type'        	=> 'text',
 					'default'		=> get_option( 'time_format' )
 				),
@@ -151,7 +154,15 @@ function ms_midtrans_core_va_init() {
 						'disabled' => 'true'	
 					),
 					'description' 		=> '<code>' . home_url( '/wc-api/ms-midtrans-payment-status/' ) . '</code><br/>Please make sure permalink already set to %postname%'
-				)
+				),
+				'redirect' => array(
+					'title' 		=> __( 'Custom Payment Page', 'ms-midtrans-core' ),
+					'label'       	=> __( 'Redirect to custom payment page', 'ms-midtrans-core' ),
+					'type'        	=> 'select',
+					'description' 	=> 'Insert this shortcode <code>[ms-midtrans-core-payment]</code> to the page. Leave empty to disable.',
+					'default'     	=> '',
+					'options'		=> $this->custom_thankyou_page()
+				),
 			);
 		}
  
@@ -401,6 +412,16 @@ function ms_midtrans_core_va_init() {
 			// include html
 			include( MS_MIDTRANS_CORE_DIR . '/views/thankyou.php' );
 		}
+
+		/**
+		 * Custom thank you page
+		 */
+		public function custom_thankyou_page() {
+			$pages 		= get_pages();
+			$empty_val 	= array( '' => __( '-- Select page --', 'ms-midtrans-core' ) );
+			$options 	= $empty_val + wp_list_pluck( $pages, 'post_title', 'ID' );
+			return $options;
+		}
  
 		/*
 		 * In case you need a webhook, like instant notification, IPN, etc
@@ -538,7 +559,7 @@ function ms_midtrans_core_va_init() {
 			$expiry_time = strtotime( $transaction_time ) + $add;
 			update_post_meta( $order_id, '_ms_midtrans_payment_expiry', $expiry_time );
 		}
-
+		
 		/*
 		 * Helper
 		 * Writing log & debug
