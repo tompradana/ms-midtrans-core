@@ -16,9 +16,7 @@ function ms_midtrans_core_va_init() {
 			/**
 			 * gateways can support subscriptions, refunds, saved payment methods,
 			 */
-			$this->supports = array(
-				'products'
-			);
+			$this->supports = array( 'products', 'refunds' );
 		 
 			// Method with all the options fields
 			$this->init_form_fields();
@@ -376,7 +374,14 @@ function ms_midtrans_core_va_init() {
 					$order->add_order_note( __( 'Order placed.', 'ms-midtrans-core' ) );
 
 					// note
-					$order->add_order_note( __( 'Midtrans HTTP notifications received: ', 'ms-midtrans-core' ) . $response_body['status_message'] . '. ' . $this->method_title );
+					$order->add_order_note( 
+						sprintf( '%s: %s [%s]. %s', 
+							__( 'Midtrans HTTP notifications received', 'ms-midtrans-core' ),
+							$response_body['status_message'],
+							$response_body['status_code'],
+							$this->method_title
+						)
+					);
 
 					// Empty cart
 					$woocommerce->cart->empty_cart();
@@ -391,13 +396,91 @@ function ms_midtrans_core_va_init() {
 					);
 				} else {
 					// Note
-					$order->add_order_note( __( 'Midtrans HTTP notifications received: ', 'ms-midtrans-core' ) . $response_body['status_message'] . '. ' . $this->method_title );
+					$order->add_order_note( 
+						sprintf( '%s: %s [%s]. %s', 
+							__( 'Midtrans HTTP notifications received', 'ms-midtrans-core' ),
+							$response_body['status_message'],
+							$response_body['status_code'],
+							$this->method_title
+						)
+					);
 					wc_add_notice( $response_body['status_message'], 'error' );
 					return;
 				}
 			} else {
 				wc_add_notice(  'Connection error.', 'error' );
 				return;
+			}
+		}
+
+		/**
+		 * We're processing refund here
+		 */
+		public function process_refund( $order_id, $amount = null, $reason = '' ) {
+			if ( $amount == null || '0' == $amount ) {
+				return false;
+			}
+
+			// api url
+			$url 	= $this->api_url . "/v2/{$order_id}/refund";
+			$order 	= wc_get_order( $order_id );
+
+			// parameter
+			$body 	= array(
+				'refund_key' 	=> sprintf( __( 'order-refund-%s', 'ms-midtrans-core' ), $order_id ),
+				'amount' 		=> $amount
+			);
+
+			if ( '' <> $reason ) {
+				$body['reason'] = $reason;
+			}
+
+			// args
+			$args 	= array(
+				'headers' => array(
+					'Accept' 		=> 'application/json',
+					'Content-Type' 	=> 'application/json',
+					'Authorization' => 'Basic ' . base64_encode( $this->server_key . ':' )
+				),
+				'body' => json_encode( $body )
+			);
+
+			/*
+			 * Your API interaction could be built with wp_remote_post()
+			 */
+			$response = wp_remote_post( $url, $args );
+
+			if ( !is_wp_error( $response ) ) {
+				$response_body = json_decode( wp_remote_retrieve_body( $response ), true );
+				if ( $response_body['status_code'] == '200' ) {
+					// Note
+					$order->add_order_note( 
+						sprintf( '%s: %s [%s]. %s', 
+							__( 'Midtrans HTTP notifications received', 'ms-midtrans-core' ),
+							$response_body['status_message'],
+							$response_body['status_code'],
+							$this->method_title
+						)
+					);
+
+					// save respose
+					update_post_meta( $order_id, '_ms_midtrans_refund_status', maybe_serialize( $response_body ) );
+					return true;
+				} else {	
+					// Note
+					$order->add_order_note( 
+						sprintf( '%s: %s [%s]. %s', 
+							__( 'Midtrans HTTP notifications received', 'ms-midtrans-core' ),
+							$response_body['status_message'],
+							$response_body['status_code'],
+							$this->method_title
+						)
+					);
+					return false;
+				}
+			} else {
+				$order->add_order_note( __( 'Connection error: Refund failed', 'ms-midtrans-core' ) . '. ' . $this->method_title );
+				return false;
 			}
 		}
 
@@ -490,7 +573,7 @@ function ms_midtrans_core_va_init() {
 				}
 
 				// save payment status notifications
-				update_post_meta( $order_id, '_ms_midtrans_payment_status', maybe_serialize( $response ) );
+				update_post_meta( $order_id, '_ms_midtrans_payment_status', maybe_serialize( json_decode( $body, true ) ) );
 
 				/**
 				 * $this->write_log( 'Ping from midtrans' );

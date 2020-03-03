@@ -13,6 +13,7 @@ function ms_midtrans_core_payment_instruction( $order_id, $payment ) {
 	$payment_details 	= maybe_unserialize( get_post_meta( $order_id, '_ms_midtrans_payment_response', true ) );
 	$payment_status 	= maybe_unserialize( get_post_meta( $order_id, '_ms_midtrans_payment_status', true ) );
 	$payment_expiry 	= get_post_meta( $order_id, '_ms_midtrans_payment_expiry', true );
+	$order_status 		= $order->get_status();
 	$transaction_time 	= $payment_details['transaction_time'];
 	$date_format		= get_option( 'date_format' );
 	$time_format		= get_option( 'time_format' );
@@ -93,13 +94,15 @@ add_action( 'template_redirect', 'redirect_payment_page' );
 function payment_page_shortcode( $atts ) {
 	ob_start();
 	$order_id 			= wc_get_order_id_by_order_key( $_GET['order'] );
-	$resposne 			= get_post_meta( $order_id, '_ms_midtrans_payment_response', true );
 	$order 				= wc_get_order( $order_id );
-	$payment_gateway 	= wc_get_payment_gateway_by_order( $order );
 	if ( $order ):
+		$payment_gateway 	= wc_get_payment_gateway_by_order( $order );
+		$response			= maybe_unserialize( get_post_meta( $order_id, '_ms_midtrans_payment_status', true ) );
+		$order_status 		= $order->get_status();
+
 		include( MS_MIDTRANS_CORE_DIR . '/views/thankyou-shortcode.php' );
 	else : ?>
-		<p class="woocommerce-notice woocommerce-notice--success woocommerce-thankyou-order-received"><?php echo apply_filters( 'woocommerce_thankyou_order_received_text', esc_html__( 'Thank you. Your order has been received.', 'woocommerce' ), null ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></p>
+		<p><?php echo apply_filters( 'ms_midtrans_core_empy_order', __( 'Order not found.', 'md-midtrans-core' ) ); ?></p>
 	<?php endif;
 	return ob_get_clean();
 }
